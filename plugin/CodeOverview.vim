@@ -2,8 +2,8 @@
 " What Is This: Launch an helper window to display overview of edited files.
 " File: CodeOverview
 " Author: Vincent B <twinside@gmail.com>
-" Last Change: 2009 déc. 23
-" Version: 1.6
+" Last Change: 2010 janv. 29
+" Version: 1.8
 " Require:
 "   * set nocompatible
 "       somewhere on your .vimrc
@@ -28,16 +28,26 @@
 "       Refresh your current overview.
 "
 " Additional:
+"   let g:code_overview_autostart = 1
+"       To start the plugin directly at vim launch.
+"
 "   let g:codeoverview_autoupdate = 1
 "       To automaticly start automatic overview generation.
 "       Otherwise you have to manually call SnapshotFile
 "       to update the view.
 "       (disabled by default)
 "
+"   let g:codeOverviewMaxLineCount = 10000
+"       To avoid locking up vim, you can provide a maximum
+"       line count to avoid refresh for very huges file.
+"       default is 10000
+"
 " Thanks:
 "  - Amjidanutpan Rama : forcing me to test the plugin
 "		         under Windows XP.
 " ChangeLog:
+"     * 1.8  : Added option to start plugin automatically.
+"     * 1.7  : Added condition to avoid loading very huge file.
 "     * 1.6  : Handling of HUUUUUUGES file
 "     * 1.5  : Update in stabilities for binaries.
 "     * 1.4  : Big fix to allow maximization on Windows XP.
@@ -57,7 +67,7 @@ if exists("g:__CODEOVERVIEW_VIM__")
 endif
 let g:__CODEOVERVIEW_VIM__ = 1
 
-if !has("win32") || !has("gui_running")
+if !(has("win32") || has("win64")) || !has("gui_running")
     " Windows only plugin
     " only with GUI
     finish
@@ -84,6 +94,10 @@ let s:wakeFile = s:tempDir . 'overviewFile' . string(getpid()) . '.txt'
 let s:tempFile = s:tempDir . 'previewer' . string(getpid()) . '.png'
 let s:tempCommandFile = s:tempDir . 'command.cmd'
 let s:friendProcessStarted = 0
+
+if !exists("g:codeOverviewMaxLineCount")
+    let g:codeOverviewMaxLineCount = 10000
+endif
 
 if s:friendProcess == '' || s:overviewProcess == ''
     echo "Can't find friend executables, aborting CodeOverview load"
@@ -142,6 +156,11 @@ endfunction "}}}
 " write an in an update file readen by the following
 " window.
 fun! s:SnapshotFile() "{{{
+    if line('$') > g:codeOverviewMaxLineCount
+        echo 'File to big, no overview generated'
+        return
+    endif
+
     " If file has been modified, we must dump it somewhere
     if &modified
         let lines = getline( 0, line('$') )
@@ -208,4 +227,8 @@ command! CodeOverviewAuto echo 'CodeOverview Friend Process not started!'
 command! SnapshotFile echo 'CodeOverview Friend Process not started!'
 command! ShowCodeOverview call s:LaunchFriendProcess()
 command! HideCodeOverview call s:StopFriendProcess()
+
+if exists("g:code_overview_autostart")
+	call s:LaunchFriendProcess()
+endif
 
